@@ -4,6 +4,9 @@ import { useRouter } from "next/router";
 import Link from 'next/link';
 import { TbWorld, TbDownload, TbMoon } from 'react-icons/tb';
 import { BiSearch } from 'react-icons/bi';
+import {loggedInUserIdState} from '../src/recoil/atoms';
+import {loggedInUserNameState} from '../src/recoil/atoms';
+import { useRecoilValue, useSetRecoilState } from 'recoil';
 
 type CategoriesProps = {
     label: string;
@@ -24,8 +27,13 @@ const Categories = ({ label, isActive, onClick }: CategoriesProps) => {
 
 
 
-
 export const NavBar = () => {
+
+    const loggedInUserId = useRecoilValue(loggedInUserIdState);
+    const setLoggedInUserId = useSetRecoilState(loggedInUserIdState);
+    const loggedInUserName = useRecoilValue(loggedInUserNameState);
+    const setLoggedInUserName = useSetRecoilState(loggedInUserNameState);
+
     const [isCategoryClicked, setIsCategoryClicked] = useState(3);
     const [isTradeClicked, setIsTradeClicked] = useState(true);
     const [isMyInfoClicked, setIsMyInfoClicked] = useState(false);
@@ -131,13 +139,20 @@ export const NavBar = () => {
         setIsTradeOptionClicked(index);
     }
 
+    const handleLogOutClick = () => {
+        setIsLogInClicked(false);
+        setIsSignUpClicked(false);
+        setLoggedInUserId(0);
+        setLoggedInUserName('');
+    }
+
     const router = useRouter();
 
     const link :string[] = ['deposit', 'markets', 'derivative', '', 'rewards hub'];
     return (
         <nav className="flex w-full h-12 pl-4 bg-zinc-900 gap-1 items-center">
             <Link href="/">
-                <p className="text-yellow-500 font-bold mx-4">TEAM 씨쁠</p>  </Link>
+                <p className="text-yellow-500 font-bold mx-4">GANANCE</p>  </Link>
 
             {categories.map((category, index) => (
                 <Link href={`/${link[index]}`} key={index} className="h-full pb-1">
@@ -151,6 +166,7 @@ export const NavBar = () => {
             </div>
 
             <div className="flex flex-grow 1 bg-transparent justify-end gap-0 h-full items-center">
+                {loggedInUserId === 0 ? 
                 <div className="flex bg-transparent">
                     <Link href="/login">
                         <button className="flex h-full w-20 items-center justify-evenly bg-transparent px-3 py-1.5 rounded text-white text-sm font-bold hover:bg-gray-800 hover:text-yellow-500"> Log In
@@ -160,7 +176,13 @@ export const NavBar = () => {
                         <button className="flex w-24 items-center justify-evenly bg-yellow-500 px-5 py-1.5 rounded text-black text-sm font-bold"> Sign Up
                         </button>
                     </Link>
-                </div>
+                </div> : 
+                <div className="flex bg-transparent">
+                        <button className="flex h-full w-20 items-center justify-evenly bg-transparent px-3 py-1.5 rounded text-white text-sm font-bold hover:bg-gray-800 hover:text-yellow-500"> {loggedInUserName}
+                        </button>
+                        <button className="flex w-24 items-center justify-evenly bg-yellow-500 px-5 py-1.5 rounded text-black text-sm font-bold" onClick={handleLogOutClick}> Log Out
+                        </button>
+                </div> }
 
                 <Link href="/download">
                     <div className="h-full group bg-transparent hover:bg-neutral-800 px-3 flex items-center"

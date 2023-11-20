@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
-
+import axios from 'axios';
 
 interface CandleData {
     x: number;
     y: number;
+}
+
+interface priceData {
+    "price": number;
 }
 
 export const CustomTickChart = () => {
@@ -27,6 +31,43 @@ export const CustomTickChart = () => {
 
         return () => clearInterval(interval);
     }, []);
+
+    // useEffect(() => {
+    //     const fetchData = async () => {
+    //         try {
+    //             const tickResponse = await axios.get<priceData[]>('https://www.gachonmail.shop/api/histories/recent');
+
+    //             if (tickResponse.status === 200) {
+
+    //                 const apiTickData = tickResponse.data;
+
+    //                 console.log(apiTickData[2]);
+
+    //                 const apiTickDataLength = apiTickData.length;
+
+    //                 for(let i = 0; i < apiTickDataLength; i++) {
+    //                     setCandleSeriesData(prevData => [
+    //                         ...prevData,
+    //                         {
+    //                             x: new Date().getTime() + i -30,
+    //                             y: apiTickData[i]
+    //                         }
+    //                     ]);
+    //                 }
+
+    //                 console.log(candleSeriesData)
+
+    //             } else {
+    //                 console.error('Failed to fetch data');
+    //             } 
+    //         } catch (error) {
+    //             console.error('Error fetching data:', error);
+    //         }
+    //     };
+
+    //     fetchData();
+    // }, []);
+
 
 
     return (

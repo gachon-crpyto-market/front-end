@@ -7,10 +7,11 @@ interface InputProps {
     placeholder?: string;
     value?: string;
     sideText?: string;
+    onChange: (value: string) => void;
 }
 
 
-const CustomInput = ({ label, type, placeholder, value, sideText }: InputProps) => {
+const CustomInput = ({ label, type, placeholder, value, sideText, onChange }: InputProps) => {
     const [isFocused, setIsFocused] = useState(false);
 
     return (
@@ -21,7 +22,7 @@ const CustomInput = ({ label, type, placeholder, value, sideText }: InputProps) 
                     name={label}
                     id={value}
                     className={`
-      block h-12 w-full rounded-lg border-0 p-3 pr-20 text-white bg-gray-100 text-sm
+      block h-12 w-full rounded-lg border-0 p-3 pr-20 text-black bg-gray-100 text-sm
       border-[1px] border-transparent hover:border-gray-600 transition-all ease-in-out ${isFocused ? 'duration-0' : 'duration-300'}
       focus:outline-none focus:border-yellow-500 caret-yellow-500
     `}
@@ -29,9 +30,11 @@ const CustomInput = ({ label, type, placeholder, value, sideText }: InputProps) 
                     onMouseOver={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
                     onMouseOut={() => setIsFocused(false)}
+                    onChange={(e) => onChange(e.target.value)}
+
+                    placeholder={sideText}
 
                 />
-                <p className="text-gray-300 absolute left-4 bottom-3 font-normal "> {sideText}</p>
             </div>
         </div>
     )

@@ -1,5 +1,5 @@
 // MyApp.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppProps } from 'next/app';
 import { RecoilRoot } from 'recoil';
 import Link from 'next/link';
@@ -13,6 +13,13 @@ import { CustomTickCandle } from '../components/chart/stock/custom_tick_candle';
 import { CustomCandleChart } from '../components/chart/stock/custom_candle_chart';
 import { CustomTickChart } from '../components/chart/stock/custom_tick_chart';
 import { NavBar } from '../components/NavBar';
+import { io } from "socket.io-client";
+import { atom, useRecoilState, useRecoilValue } from 'recoil';
+import { loggedInUserIdState } from '../src/recoil/atoms';
+import axios from 'axios';
+import { timeStamp } from 'console';
+
+import { useSocketContext } from '../components/SocketContext';
 
 // const DynamicChart = dynamic(() => import('./components/chart'), {
 //   ssr: false, // 서버 측에서 로드하지 않도록 설정
@@ -58,9 +65,10 @@ interface InputProps {
   placeholder?: string;
   value?: string;
   sideText?: string;
+  onChange: (value: string) => void;
 }
 
-const Input = ({ label, type, placeholder, value, sideText }: InputProps) => {
+const Input = ({ label, type, placeholder, value, sideText, onChange }: InputProps) => {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -80,6 +88,7 @@ const Input = ({ label, type, placeholder, value, sideText }: InputProps) => {
           onMouseOver={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onMouseOut={() => setIsFocused(false)}
+          onChange={(e) => onChange(e.target.value)}
 
         />
         <p className="text-white absolute right-3 bottom-3 font-semibold text-xs"> {sideText}</p>
@@ -91,6 +100,8 @@ const Input = ({ label, type, placeholder, value, sideText }: InputProps) => {
 
 
 const Index = () => {
+  const socket = useSocketContext();
+
   const [isCategoryClicked, setIsCategoryClicked] = useState(3);
   const [isTradeClicked, setIsTradeClicked] = useState(true);
   const [isMyInfoClicked, setIsMyInfoClicked] = useState(false);
@@ -116,6 +127,8 @@ const Index = () => {
   const [isTradeOptionClicked, setIsTradeOptionClicked] = useState(0);
 
   const [isTickChartClicked, setIsTickChartClicked] = useState(false);
+
+  const loggedInUserId = useRecoilValue(loggedInUserIdState);
 
   const categories = ["Deposit", "Markets", "Derivatives", "Trade", "Rewards Hub"]
   const handleCategoryClick = (index: number) => {
@@ -201,7 +214,7 @@ const Index = () => {
   const handleTickChartClick = () => {
     setIsTickChartClicked(true);
   }
-  
+
   const handleStandardChartClick = () => {
     setIsTickChartClicked(false);
   }
@@ -212,14 +225,37 @@ const Index = () => {
     qty: string;
     total: string;
     mode: string;
+    index:number;
   }
-  const TradePrice = ({ price, qty, total, mode }: tradePriceProps) => {
+  const TradePrice = ({ index, price, qty, total, mode }: tradePriceProps) => {
+    const [highlighted, setHighlighted] = useState(false);
+
+  useEffect(() => {
+
+    const interval = setInterval(() => {
+    if (Math.floor(Math.random()*5)+1 !== index) {
+      setHighlighted(true);
+
+      const timer = setTimeout(() => {
+        setHighlighted(false);
+      }, 1200);
+    }
+  }, 1000);
+  },[]);
 
     return (
-      <div className="w-full h-6 flex flex-grow flex-row text-white">
-        <p className={`flex grow 1  ${mode === 'buy' ? 'text-red-400' : 'text-green-400'} `}> {price}</p>
-        <p className="w-1/4"> {qty}</p>
-        <p className="w-1/4 pr-2"> {total}</p>
+<div className={`w-full px-2 my-[1px] h-6 flex flex-grow flex-row rounded  text-white`} style={{ backgroundColor: highlighted ? (mode === 'buy' || mode === '매수' ? 'rgba(0, 200, 0, 0.2)' : 'rgba(200, 100, 100, 0.1)') : ''
+
+}}>
+        <p className={`flex grow 1 h-full flex items-center  ${mode === 'buy' || mode === '매수' ? 'text-green-400' : 'text-red-400'} `} 
+                 style={{ color: highlighted ? (mode === 'buy' || mode === '매수' ? 'rgba(0, 220, 0, 0.6)' : 'rgba(200, 100, 100, 0.8)') : ''}}
+        > {price}</p>
+        <p className="w-1/4 h-full flex items-center "
+         style={{ color: highlighted ? (mode === 'buy' || mode === '매수' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.7)') : ''}}
+        > {qty}</p>
+        <p className="w-1/4 h-full pr-2 flex items-center "
+                 style={{ color: highlighted ? (mode === 'buy' || mode === '매수' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.7)') : ''}}
+        > {total}</p>
       </div>
 
     );
@@ -234,11 +270,21 @@ const Index = () => {
   }
   const TradeTimestamp = ({ price, qty, total, mode, timestamp }: tradeTimestampProps) => {
 
+    // mm dd hh:mm:ss로 변환
+    const date = new Date(timestamp);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+    const milliseconds = date.getMilliseconds();
+    const timestampModi = `${minutes}:${seconds}:${milliseconds}`;
+
     return (
       <div className="w-full h-6 flex flex-grow flex-row text-white">
-        <p className={`flex grow 1  ${mode === 'buy' ? 'text-red-400' : 'text-green-400'} `}> {price}</p>
+        <p className={`flex grow 1  ${mode === 'buy' || mode === '매수' ? 'text-red-400' : 'text-green-400'} `}> {price}</p>
         <p className="w-1/4"> {qty}</p>
-        <p className="w-1/4 pr-2"> {timestamp}</p>
+        <p className="w-1/4 pr-2"> {timestampModi}</p>
       </div>
 
     );
@@ -285,27 +331,209 @@ const Index = () => {
     const mode = modes[randomMode];
 
 
-    return { price: randomPrice, qty: randomQty, total, mode: mode, timestamp: timestamp};
+    return { price: randomPrice, qty: randomQty, total, mode: mode, timestamp: timestamp };
   };
 
   // 랜덤 데이터를 담을 배열
-  const randomTimestampDataArray = Array.from({ length: 12 }, generateTimestampRandomData); 
-
-  
+  const randomTimestampDataArray = Array.from({ length: 12 }, generateTimestampRandomData);
 
 
 
+  interface History {
+    "userId": string;
+    "tradeType": string,
+    "counterUserId": string,
+    "price": number,
+    "quantity": number,
+    "timestamp": string
+  }
 
+  interface Order {
+    "price": string,
+    "order": Trade[]
+  }
+
+  interface Trade {
+    "userId": string,
+    "timestamp": string,
+    "quantity": number
+  }
+
+  interface OrderBook {
+    "price": string,
+    "qty": number,
+    "total": number,
+    "mode": string
+  }
+
+
+  const [historyData, setHistoryData] = useState<History[]>([]);
+  const [buyData, setBuyData] = useState<OrderBook[]>([]);
+  const [sellData, setSellData] = useState<OrderBook[]>([]);
+  const [price, setPrice] = useState<string>('');
+  const [qty, setQty] = useState<string>('');
+  const [sellIndex, setSellIndex] = useState<number>(-1);
+  const [buyIndex, setBuyIndex] = useState<number>(-1);
+
+  useEffect(() => {
+    console.log('useEffect called');
+    const fetchData = async () => {
+      try {
+        const historyResponse = await axios.get<History[]>('https://www.gachonmail.shop/api/histories?userId=test1');
+
+        console.log(historyResponse.toString());
+        if (historyResponse.status === 200) {
+          setHistoryData(historyResponse.data);
+          console.log(historyResponse);
+        }
+      }
+      catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+
+  }, []);
+
+  const handleBuyOrder = () => {
+    console.log("fdfdfdfdf");
+    console.log(buyData);
+    if(loggedInUserId === 0){
+      alert("Need to login")
+    }
+    const priceN = parseInt(price);
+    const qtyN = parseInt(qty);
+
+    if (priceN === 0 || qtyN === 0) {
+      alert("Enter the price and quantity");
+    } else {
+      // 매수 주문
+      socket.emit("bid", {
+        userId: loggedInUserId,
+        timestamp: new Date().toISOString(),
+        price: priceN,
+        quantity: qty,
+      });
+    }
+  }
+
+  const handleSellOrder = () => {
+    if(loggedInUserId === 0){
+      alert("Need to login")
+    }
+    const priceN = parseInt(price);
+    const qtyN = parseInt(qty);
+
+    if (priceN === 0 || qtyN === 0) {
+      alert("Enter the price and quantity");
+    } else {
+      // 매도 주문
+      socket.emit("ask", {
+        userId: loggedInUserId,
+        timestamp: new Date().toISOString(),
+        price: priceN,
+        quantity: qtyN,
+      });
+    }
+  }
+
+
+  // 내 소켓 아이피 로그
+  socket.on("connect", () => {
+    console.log(socket.id); // x8WIv7-mJelg7on_ALbx
+  });
+
+  // 매수 - 초록
+  socket.on("bidList", function (data : Order[]) {
+    // console.log(data);
+    const newBuyData: any = [];
+    setBuyData([]);
+    console.log(buyData);
+ 
+    data.forEach(newBuyItem => {
+      const totalQuantity = newBuyItem.order.reduce((acc, orderItem) => acc + Number(orderItem.quantity), 0);
+      newBuyData.push({
+        price: newBuyItem.price,
+        qty: totalQuantity,
+        total: totalQuantity * Number(newBuyItem.price),
+        mode: 'buy'
+      });
+    })
+
+    console.log(buyData);
+    newBuyData.sort((a, b) => Number(b.price) -Number(a.price));
+    setBuyData(newBuyData);
+  });
+
+  // 매도
+  // 소켓 이벤트에서 새로운 SellData를 합치는 부분
+  socket.on("askList", function (data : Order[]) {
+    // console.log(data);
+    const newSellData: any = [];
+    setSellData([]);
+ 
+    data.forEach(newSellItem => {
+      const totalQuantity = newSellItem.order.reduce((acc, orderItem) => acc + Number(orderItem.quantity), 0);
+      newSellData.push({
+        price: newSellItem.price,
+        qty: totalQuantity,
+        total: totalQuantity * Number(newSellItem.price),
+        mode: 'sell'
+      });
+    })
+
+    newSellData.sort((a, b) => Number(a.price) -Number(b.price));
+    setSellData(newSellData);
+      
+    });
+
+  // const fetchData = async () => {
+  //   try {
+  //     const buyResponse = await axios.get<Order[]>('http://1.237.212.172:3000/order/bidList');
+  //     const sellResponse = await axios.get<Order[]>('http://1.237.212.172:3000/order/askList');
+
+  //     console.log(buyResponse.toString() + sellResponse.toString());
+  //     if (buyResponse.status === 200 && sellResponse.status === 200) {
+  //       const processedData1 = buyResponse.data.map(item => {
+  //         const totalQuantity = item.order.reduce((acc, orderItem) => acc + orderItem.quantity, 0);
+  //         return {
+  //           price: item.price,
+  //           qty: item.order.length, // 주문 수량
+  //           total: totalQuantity, // 총 수량
+  //           mode: 'buy'
+  //         };
+  //       });
+  //       setBuyData(processedData1);
+  //       console.log(buyResponse.data);
+
+  //       const processedData2 = sellResponse.data.map(item => {
+  //         const totalQuantity = item.order.reduce((acc, orderItem) => acc + orderItem.quantity, 0);
+  //         return {
+  //           price: item.price,
+  //           qty: item.order.length, // 주문 수량
+  //           total: totalQuantity, // 총 수량
+  //           mode: 'sell'
+  //         };
+  //       });
+  //       setSellData(processedData2);
+  //       console.log(sellResponse.data);
+
+  //     }
+  //   }
+  //   catch (error) {
+  //     console.error('Error fetching data:', error);
+  //   }
+
+  //   fetchData();
+  // }
 
   return (
     <div className="min-w-[72rem]">
       <div className={`flex w-full h-10 items-center px-4 ${isDarkModeClicked ? 'bg-mainBg-default' : 'bg-white'} text-white border-y-4 border-black text-gray-400 text-sm`}>
         GCC/USDT
       </div>
-      {/* 
-        <div className="w-full bg-yellow-100">
-          BTC
-        </div> */}
+
       <div className="w-full h-[calc(100vh-7rem)] bg-black gap-1 flex">
         <div className="h-full flex-grow flex flex-col">
           <div className="w-full h-[4.3rem] bg-mainBg-default border-b-[3px] border-black text-white p-4 ">
@@ -316,9 +544,9 @@ const Index = () => {
             <div className="w-full h-full flex-col pr-5">
               <div className="flex h-10 items-center text-gray-400 text-xs font-semibold p-5 gap-4" >
                 <p className="flex-grow 1 text-white">Chart</p>
-                <p onClick={handleStandardChartClick} className={`${!isTickChartClicked ? 'text-yellow-400' : 'text-gray-400'}`}>Standard</p>
-                <p onClick={handleTickChartClick} className={`${isTickChartClicked ? 'text-yellow-500' : 'text-gray-400'}`}>Tick</p>
-                <p>TradingView</p>
+                <p onClick={handleStandardChartClick} className={`cursor-pointer ${!isTickChartClicked ? 'text-yellow-400' : 'text-gray-400'}`}>Standard</p>
+                <p onClick={handleTickChartClick} className={`cursor-pointer ${isTickChartClicked ? 'text-yellow-500' : 'text-gray-400'}`}>Tick</p>
+                <p className="cursor-pointer">TradingView</p>
               </div>
               {/* <Stocks/> */}
               <div className="">
@@ -336,29 +564,29 @@ const Index = () => {
                   Recent Trade </button>
               </div>
               {isOrderBookClicked ?
-                <div className="bg-gray-400 h-full w-full text-xs flex-grow font-semibold text-gray-400">
-                  <div className="w-full h-1/2 px-2 pt-3 flex-grow 1">
-                    <div className="w-full h-6 flex flex-grow flex-row">
+                <div className="bg-gray-400 h-full w-full text-xs flex flex-col font-semibold text-gray-400">
+                  <div className="w-full h-1/2 pt-3 flex flex-col place-content-between">
+                    <div className="w-full h-6 px-2 flex flex-grow flex-row">
                       <p className="flex grow 1"> Price(USDT)</p>
                       <p className="w-1/4"> Qty(BTC)</p>
                       <p className="w-1/4"> Total(USDT)</p>
                     </div>
-                    <div>
-                      {randomBuyDataArray.map((data, index) => (
-                        <TradePrice key={index} price={data.price.toString()} qty={data.qty.toString()} total={data.total.toString()} mode={data.mode.toString()} />
+                    <div className="flex flex-col-reverse">
+                      {sellData.map((data, index) => (
+                        <TradePrice key={index} index={index} price={data.price.toString()} qty={data.qty.toString()} total={data.total.toString()} mode={data.mode.toString()} />
                       ))}
 
                     </div>
 
                   </div>
 
-                  <div className="w-full h-1/2  px-2 flex-grow flex-grow 1">
-                    <div className="w-full h-8 flex flex-grow flex-row ">
+                  <div className="w-full h-1/2 flex-grow flex-grow 1">
+                    <div className="w-full h-8 flex px-2 flex-grow flex-row ">
                       <p className="text-base h-full font-bold text-green-400 mr-6 text-center"> 36,777.77</p>
                       <p className="flex grow 1 h-full pt-1 text-center text- "> ~ 36.670USD</p>
                     </div>
-                    {randomSellDataArray.map((data, index) => (
-                      <TradePrice key={index} price={data.price.toString()} qty={data.qty.toString()} total={data.total.toString()} mode={data.mode.toString()} />
+                    {buyData.map((data, index) => (
+                      <TradePrice key={index} index={index} price={data.price.toString()} qty={data.qty.toString()} total={data.total.toString()} mode={'buy'} />
                     ))}
                   </div>
                   <div>
@@ -373,8 +601,8 @@ const Index = () => {
                       <p className="w-1/4"> Timestamp</p>
                     </div>
                     <div>
-                      {randomTimestampDataArray.map((data, index) => (
-                        <TradePrice key={index} price={data.price.toString()} qty={data.qty.toString()} total={data.total.toString()} mode={data.mode.toString()} />
+                      {historyData.map((data, index) => (
+                        <TradeTimestamp key={index} price={data.price.toString()} qty={data.quantity.toString()} total={(data.quantity * data.price).toString()} mode={data.tradeType.toString()} timestamp={data.timestamp} />
                       ))}
 
                     </div>
@@ -451,17 +679,22 @@ const Index = () => {
                   <p className="text-gray-400 text-xs">Available Balance</p>
                   <p className="flex-grow 1 text-white text-xs text-right font-semibold">-- UDST</p>
                 </div>
-                <Input label="Order Price" value="Order Price" sideText="USDT" />
-                <Input label="Qty" value="Qty" sideText="BTC" />
-                <Input label="Order value" value="Order Value" sideText="USDT" />
+                <Input label="Order Price" value="Order Price" sideText="USDT" onChange={setPrice} />
+                <Input label="Qty" value="Qty" sideText="BTC" onChange={setQty} />
+                <Input label="Order value" value="Order Value" sideText="USDT" onChange={setQty} />
 
                 <p className="text-gray-500 text-xs text-right col-span-2"> -- USD</p>
 
-                <nav>
 
-                  <Link href="/register"><button className={`mt-4 w-full h-10 p-3 rounded font-bold text-sm text-black bg-yellow-500 hover:bg-yellow-300`} onClick={handleSignUpClick}>Sign Up</button></Link>
-                  <Link href="/login"><button className={`mt-3 w-full h-10 p-3 rounded font-bold text-sm text-white bg-gray-700 hover:bg-gray-600`} onClick={handleLogInClick}>Log In</button></Link>
-                </nav>
+                {loggedInUserId === 0 ?
+                  <nav>
+                    <Link href="/signup"><button className={`mt-4 w-full h-10 p-3 rounded font-bold text-sm text-black bg-yellow-500 hover:bg-yellow-300`} onClick={handleSignUpClick}>Sign Up</button></Link>
+                    <Link href="/login"><button className={`mt-3 w-full h-10 p-3 rounded font-bold text-sm text-white bg-gray-700 hover:bg-gray-600`} onClick={handleLogInClick}>Log In</button></Link>
+                  </nav>
+                  : isBuyClicked ?
+                    <button className={`mt-4 w-full h-10 p-2 rounded font-bold text-sm text-white bg-green-400 hover:bg-green-300`} onClick={handleBuyOrder}>Buy GCC</button> :
+                    <button className={`mt-4 w-full h-10 p-2 rounded font-bold text-sm text-white bg-red-400 hover:bg-red-300`} onClick={handleSellOrder}>Sell GCC</button>
+                }
 
                 <p className="mt-4 mb-4 text-yellow-500 col-span-2 text-center text-xs"> Demo Trading</p>
 
@@ -484,7 +717,7 @@ const Index = () => {
 
 
                 <div className=" mt-3">
-                  <p className="text-gray-400 text-xs">Email</p>
+                  <p className="text-gray-400 text-xs">StudentId</p>
                   <div className="w-full relative mt-1.5 mb-4">
                     <p
                       className={`
@@ -494,17 +727,29 @@ const Index = () => {
   `}
                     >gachon@gmail.com</p>
                   </div>
+
+                  <p className="text-gray-400 text-xs">My Cash</p>
+                  <div className="w-full relative mt-1.5 mb-4">
+                    <p
+                      className={`
+    block h-10 w-full rounded border-0 p-2 pl-4 pr-20 text-white bg-neutral-700 text-sm
+    border-[1px] border-transparent hover:border-gray-600 transition-all ease-in-out
+    focus:outline-none focus:border-yellow-500 caret-yellow-500
+  `}
+                    >2022.22</p>
+                  </div>
+
+                  <p className="text-gray-400 text-xs">My GCC</p>
+                  <div className="w-full relative mt-1.5 mb-4">
+                    <p
+                      className={`
+    block h-10 w-full rounded border-0 p-2 pl-4 pr-20 text-white bg-neutral-700 text-sm
+    border-[1px] border-transparent hover:border-gray-600 transition-all ease-in-out
+    focus:outline-none focus:border-yellow-500 caret-yellow-500
+  `}
+                    >42</p>
+                  </div>
                 </div>
-
-
-
-
-
-
-
-
-
-
 
               </div>
                 : <div className="w-full">
@@ -517,7 +762,7 @@ const Index = () => {
                       </div>
                       <div>
                         {randomBuyDataArray.map((data, index) => (
-                          <TradePrice key={index} price={data.price.toString()} qty={data.qty.toString()} total={data.total.toString()} mode={data.mode.toString()} />
+                          <TradePrice key={index} index={index} price={data.price.toString()} qty={data.qty.toString()} total={data.total.toString()} mode={data.mode.toString()} />
                         ))}
 
                       </div>
@@ -530,7 +775,7 @@ const Index = () => {
                         <p className="flex grow 1 h-full pt-1 text-center text- "> ~ 36.670USD</p>
                       </div>
                       {randomSellDataArray.map((data, index) => (
-                        <TradePrice key={index} price={data.price.toString()} qty={data.qty.toString()} total={data.total.toString()} mode={data.mode.toString()} />
+                        <TradePrice key={index} index={index} price={data.price.toString()} qty={data.qty.toString()} total={data.total.toString()} mode={data.mode.toString()} />
                       ))}
                     </div>
                     <div>
@@ -539,11 +784,9 @@ const Index = () => {
 
                   </div>
                 </div>}
-
             </div>}
         </div>
       </div>
-
     </div>
   );
 }

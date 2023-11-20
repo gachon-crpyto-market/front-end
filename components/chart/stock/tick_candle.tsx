@@ -7,7 +7,7 @@ type CandleStickProps = {
   date: string[];
   name: string[];
   line: number[];
-  price: number[];
+  price: number[];  
 };
 
 export const TickCandle: React.FC<CandleStickProps> = ({
